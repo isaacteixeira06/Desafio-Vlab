@@ -1,0 +1,313 @@
+openapi: 3.0.3
+info:
+  title: VLab - Solicitações de Atendimento API
+  description: API REST para registro e acompanhamento de solicitações de atendimento em unidades públicas de saúde.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Ambiente local (Docker)
+
+tags:
+  - name: Solicitações
+    description: Operações sobre solicitações de atendimento
+  - name: Health
+    description: Status da API
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Verifica o status da API e do banco de dados
+      responses:
+        "200":
+          description: API operacional
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: connected
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /solicitacoes:
+    get:
+      tags: [Solicitações]
+      summary: Lista solicitações com paginação e filtros
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/StatusEnum"
+        - name: categoria
+          in: query
+          schema:
+            $ref: "#/components/schemas/CategoriaEnum"
+        - name: prioridade
+          in: query
+          schema:
+            $ref: "#/components/schemas/PrioridadeEnum"
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Lista paginada de solicitações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Solicitacao"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMeta"
+                  links:
+                    $ref: "#/components/schemas/PaginationLinks"
+
+    post:
+      tags: [Solicitações]
+      summary: Cria uma nova solicitação de atendimento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarSolicitacaoRequest"
+            examples:
+              basica:
+                summary: Solicitação básica
+                value:
+                  nome_solicitante: "Maria da Silva"
+                  categoria: "CONSULTA"
+                  prioridade: "MEDIA"
+                  descricao: "Solicitação de consulta médica de rotina."
+              urgente:
+                summary: Solicitação urgente
+                value:
+                  nome_solicitante: "João Pereira"
+                  categoria: "EXAME"
+                  prioridade: "URGENTE"
+                  descricao: "Necessita exame de urgência."
+                  justificativa_prioridade: "Paciente com febre alta persistente e dificuldade respiratória."
+      responses:
+        "201":
+          description: Solicitação criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Solicitacao"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /solicitacoes/{id}:
+    get:
+      tags: [Solicitações]
+      summary: Retorna os detalhes de uma solicitação
+      parameters:
+        - $ref: "#/components/parameters/SolicitacaoId"
+      responses:
+        "200":
+          description: Detalhes da solicitação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Solicitacao"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /solicitacoes/{id}/status:
+    patch:
+      tags: [Solicitações]
+      summary: Atualiza o status de uma solicitação
+      description: |
+        Respeita o fluxo de transições:
+        - RECEBIDA → EM_ANALISE, CANCELADA
+        - EM_ANALISE → AGENDADA, CANCELADA
+        - AGENDADA → CONCLUIDA, CANCELADA
+        - CONCLUIDA e CANCELADA são status finais
+      parameters:
+        - $ref: "#/components/parameters/SolicitacaoId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/StatusEnum"
+      responses:
+        "200":
+          description: Status atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Solicitacao"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+components:
+  parameters:
+    SolicitacaoId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: ID da solicitação
+
+  schemas:
+    StatusEnum:
+      type: string
+      enum: [RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA, CANCELADA]
+
+    CategoriaEnum:
+      type: string
+      enum: [CONSULTA, EXAME, VACINACAO, OUTRO]
+
+    PrioridadeEnum:
+      type: string
+      enum: [BAIXA, MEDIA, ALTA, URGENTE]
+
+    Solicitacao:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        protocolo:
+          type: string
+          example: "SOL-20240101-AB3XY"
+        nome_solicitante:
+          type: string
+          example: "Maria da Silva"
+        categoria:
+          $ref: "#/components/schemas/CategoriaEnum"
+        prioridade:
+          $ref: "#/components/schemas/PrioridadeEnum"
+        status:
+          $ref: "#/components/schemas/StatusEnum"
+        descricao:
+          type: string
+        justificativa_prioridade:
+          type: string
+          nullable: true
+        proximos_status:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusEnum"
+          description: Próximos status válidos para transição
+        data_criacao:
+          type: string
+          format: date-time
+        data_atualizacao:
+          type: string
+          format: date-time
+
+    CriarSolicitacaoRequest:
+      type: object
+      required: [nome_solicitante, categoria, prioridade, descricao]
+      properties:
+        nome_solicitante:
+          type: string
+          maxLength: 150
+        categoria:
+          $ref: "#/components/schemas/CategoriaEnum"
+        prioridade:
+          $ref: "#/components/schemas/PrioridadeEnum"
+        descricao:
+          type: string
+          maxLength: 2000
+        justificativa_prioridade:
+          type: string
+          maxLength: 1000
+          description: Obrigatório quando prioridade = URGENTE
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        from:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        to:
+          type: integer
+        total:
+          type: integer
+
+    PaginationLinks:
+      type: object
+      properties:
+        first:
+          type: string
+        last:
+          type: string
+        prev:
+          type: string
+          nullable: true
+        next:
+          type: string
+          nullable: true
+
+  responses:
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Recurso não encontrado."
+
+    ValidationError:
+      description: Dados inválidos
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Os dados fornecidos são inválidos."
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
