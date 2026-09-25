@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -7,11 +8,13 @@ interface LayoutProps {
 }
 
 export function Layout({ children, paginaAtiva, onNavegar }: LayoutProps) {
+  const { user, logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <aside className="w-56 shrink-0 bg-[#1B3A5C] flex flex-col">
-        {/* Logo / Marca */}
+        {/* Logo */}
         <div className="px-5 py-6 border-b border-white/10">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center shrink-0">
@@ -29,28 +32,38 @@ export function Layout({ children, paginaAtiva, onNavegar }: LayoutProps) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Menu principal">
-          <NavItem
-            icon={<DashboardIcon />}
-            label="Painel"
-            active={paginaAtiva === 'dashboard'}
-            onClick={() => onNavegar('dashboard')}
-          />
-          <NavItem
-            icon={<ListIcon />}
-            label="Solicitações"
-            active={paginaAtiva === 'listar'}
-            onClick={() => onNavegar('listar')}
-          />
-          <NavItem
-            icon={<PlusIcon />}
-            label="Nova solicitação"
-            active={paginaAtiva === 'nova'}
-            onClick={() => onNavegar('nova')}
-          />
+          <NavItem icon={<DashboardIcon />} label="Painel"
+            active={paginaAtiva === 'dashboard'} onClick={() => onNavegar('dashboard')} />
+          <NavItem icon={<ListIcon />} label="Solicitações"
+            active={paginaAtiva === 'listar'} onClick={() => onNavegar('listar')} />
+          <NavItem icon={<PlusIcon />} label="Nova solicitação"
+            active={paginaAtiva === 'nova'} onClick={() => onNavegar('nova')} />
         </nav>
 
-        <div className="px-5 py-4 border-t border-white/10">
-          <p className="text-blue-300 text-xs">V-Lab · CIn UFPE</p>
+        {/* Usuário logado + logout */}
+        <div className="px-4 py-4 border-t border-white/10 space-y-3">
+          {user && (
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center shrink-0">
+                <span className="text-white text-xs font-semibold">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-white text-xs font-medium truncate">{user.name}</p>
+                <p className="text-blue-300 text-xs truncate">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-blue-200 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+            </svg>
+            Sair
+          </button>
         </div>
       </aside>
 
@@ -61,8 +74,6 @@ export function Layout({ children, paginaAtiva, onNavegar }: LayoutProps) {
     </div>
   );
 }
-
-// ─── NavItem ──────────────────────────────────────────────────────────────────
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -77,10 +88,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left
-        ${active
-          ? 'bg-white/15 text-white'
-          : 'text-blue-200 hover:bg-white/10 hover:text-white'
-        }`}
+        ${active ? 'bg-white/15 text-white' : 'text-blue-200 hover:bg-white/10 hover:text-white'}`}
     >
       <span className="w-4 h-4 shrink-0">{icon}</span>
       {label}
@@ -88,20 +96,16 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   );
 }
 
-// ─── Ícones inline ────────────────────────────────────────────────────────────
-
 const DashboardIcon = () => (
   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
     <path d="M2 4a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM8 4a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H9a1 1 0 01-1-1V4zM14 4a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 01-1-1V4zM2 10a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2zM8 10a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H9a1 1 0 01-1-1v-2zM14 10a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2z" />
   </svg>
 );
-
 const ListIcon = () => (
   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
     <path fillRule="evenodd" d="M3 4a1 1 0 000 2h14a1 1 0 100-2H3zm0 4a1 1 0 000 2h14a1 1 0 100-2H3zm0 4a1 1 0 000 2h14a1 1 0 100-2H3z" clipRule="evenodd" />
   </svg>
 );
-
 const PlusIcon = () => (
   <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
